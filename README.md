@@ -1,4 +1,3 @@
-```markdown
 # 🚀 TIKTOK VIEW BOT - NGLONG DEV
 
 ### Phiên bản: **v5.0** | MAX SPEED EDITION
