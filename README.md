@@ -327,9 +327,8 @@ C:\TikTokBot\
 NGLONG DEV
 
 Kênh Link
-GitHub github.com/nglongdev
-YouTube youtube.com/@nglongdev
-Telegram t.me/nglongdev
+GitHub github.com/nguyenlongstore
+Tiktok tiktok.com/@nguyenlongsupport.store
 
 ---
 
@@ -347,7 +346,8 @@ Tác giả (NGLONG DEV) không chịu trách nhiệm về bất kỳ hậu quả
 
 ---
 
-© 2024 NGLONG DEV - Made with ❤️ for the community
+© 2026 NGLONG DEV - Made with ❤️ for the community
 
 ```
+NGUYENLONG LOVE YOU
 ```
