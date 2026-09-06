@@ -276,6 +276,16 @@ update interval self.update_interval = 300 Tự động refresh IP (giây) 300 (
 
 ---
 
+TỐC ĐỘ DỰ KIẾN:
+
+· 10 view: ~5-10 giây
+· 100 view: ~30-60 giây
+· 1.000 view: ~5-10 phút
+· 10.000 view: ~1-2 giờ
+· 100.000 view: ~10-20 giờ
+
+---
+
 🛠️ XỬ LÝ LỖI THƯỜNG GẶP
 
 LỖI CÀI ĐẶT
