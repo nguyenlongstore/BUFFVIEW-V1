@@ -74,11 +74,10 @@ class TikTokViewBot:
         self.success_count = 0
         self.fail_count = 0
         self.running = True
-        self.batch_size = 50  # Giam xuong de tranh overload
+        self.batch_size = 50
         self.proxies = PROXY_LIST.copy()
-        self.max_threads = 30  # Giam xuong 30 thread
+        self.max_threads = 30
         self.lock = threading.Lock()
-        self.start_success = 0  # Luu so view thanh cong dau dot
 
     def get_video_id(self):
         if "tiktok.com" in self.video_url:
@@ -196,7 +195,7 @@ class TikTokViewBot:
         print(f"{Colors.BOLD}{Colors.CYAN}")
         print("╔════════════════════════════════════════════════════════════════╗")
         print("║                     [ NGLONG DEV ]                            ║")
-        print("║         TIKTOK VIEW BOT v8.1 - MAX SPEED                     ║")
+        print("║         TIKTOK VIEW BOT v8.2 - MAX SPEED                     ║")
         print("╠════════════════════════════════════════════════════════════════╣")
         print(f"║  {Colors.WHITE}TOI THIEU: 10 VIEWS{Colors.CYAN}           {Colors.WHITE}TOI DA: 100.000.000 VIEWS{Colors.CYAN}          ║")
         print(f"║  {Colors.WHITE}THREADS: {self.max_threads}{Colors.CYAN}                                        ║")
@@ -209,7 +208,7 @@ class TikTokViewBot:
         print(f"{Colors.GREEN}[+] PROXY VIET NAM - TANG VIEW CHUAN{Colors.END}")
         
         # Tinh thoi gian
-        est_time = self.view_count / 300  # 300 view/phut
+        est_time = self.view_count / 300
         if est_time < 60:
             time_str = f"{est_time:.0f} giay"
         elif est_time < 3600:
@@ -230,6 +229,7 @@ class TikTokViewBot:
         print(f"{Colors.CYAN}[*] Chia thanh {total_batches} dot, moi dot {self.batch_size} view{Colors.END}")
         
         start_total = time.time()
+        total_success = 0  # Bien dem tong view thanh cong
         
         for batch in range(total_batches):
             if not self.running:
@@ -240,7 +240,7 @@ class TikTokViewBot:
             batch_count = end_idx - start_idx
 
             # Luu so view thanh cong truoc khi chay
-            before_success = self.success_count
+            before = self.success_count
             
             print(f"\n{Colors.BOLD}{Colors.YELLOW}[=== DOT {batch+1}/{total_batches} - {batch_count} view ===]{Colors.END}")
             
@@ -249,10 +249,12 @@ class TikTokViewBot:
             elapsed = time.time() - start_time
             
             # Tinh so view thanh cong trong dot nay
-            added_views = self.success_count - before_success
-            rate = added_views / elapsed if elapsed > 0 else 0
+            added = self.success_count - before
+            total_success += added  # Cong don vao tong
             
-            print(f"\n{Colors.GREEN}[*] Dot {batch+1}: +{added_views} view ({elapsed:.1f}s) - {rate:.1f} view/s{Colors.END}")
+            rate = added / elapsed if elapsed > 0 else 0
+            
+            print(f"\n{Colors.GREEN}[*] Dot {batch+1}: +{added} view ({elapsed:.1f}s) - {rate:.1f} view/s{Colors.END}")
             print(f"{Colors.CYAN}[*] Tong: {self.success_count}/{self.view_count} ({self.success_count/self.view_count*100:.1f}%){Colors.END}")
 
             if self.success_count < self.view_count and batch < total_batches - 1:
@@ -281,7 +283,7 @@ def show_menu():
     print(f"{Colors.BOLD}{Colors.CYAN}")
     print("╔════════════════════════════════════════════════════════════════╗")
     print("║                     [ NGLONG DEV ]                            ║")
-    print("║         TIKTOK VIEW BOT v8.1 - MAX SPEED                     ║")
+    print("║         TIKTOK VIEW BOT v8.2 - MAX SPEED                     ║")
     print("╠════════════════════════════════════════════════════════════════╣")
     print(f"║  {Colors.WHITE}1. TANG VIEW (MAX SPEED){Colors.CYAN}                                    ║")
     print(f"║  {Colors.WHITE}2. CAP NHAT PROXY VN{Colors.CYAN}                                       ║")
@@ -295,7 +297,7 @@ def show_menu():
 
 # ========== MAIN ==========
 if __name__ == "__main__":
-    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT v8.1...{Colors.END}")
+    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT v8.2...{Colors.END}")
     time.sleep(1)
     
     fetch_vietnam_proxies()
