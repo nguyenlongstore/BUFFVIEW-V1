@@ -7,6 +7,7 @@ import sys
 import json
 import subprocess
 from fake_useragent import UserAgent
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ========== CAU HINH MAU SAC ==========
 class Colors:
@@ -21,48 +22,10 @@ class Colors:
     UNDERLINE = '\033[4m'
     END = '\033[0m'
 
-# ========== TU DONG CAI DAT SELENIUM ==========
-def install_selenium():
-    try:
-        import selenium
-        print(f"{Colors.GREEN}[+] Selenium da duoc cai dat!{Colors.END}")
-        return True
-    except ImportError:
-        print(f"{Colors.YELLOW}[*] Dang cai dat Selenium...{Colors.END}")
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "selenium", "-q"])
-            print(f"{Colors.GREEN}[+] Da cai dat Selenium thanh cong!{Colors.END}")
-            return True
-        except Exception as e:
-            print(f"{Colors.RED}[!] Khong the cai Selenium: {str(e)[:50]}{Colors.END}")
-            print(f"{Colors.YELLOW}[*] Vui long tu cai: pip install selenium{Colors.END}")
-            return False
-
-# ========== KHAI BAO BIEN TOAN CUC ==========
-USE_SELENIUM = False
-
-# Kiem tra va cai selenium
-selenium_installed = install_selenium()
-
-if selenium_installed:
-    try:
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options
-        from selenium.webdriver.common.by import By
-        from selenium.webdriver.common.action_chains import ActionChains
-        from selenium.webdriver.support.ui import WebDriverWait
-        from selenium.webdriver.support import expected_conditions as EC
-        from selenium.common.exceptions import WebDriverException
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        USE_SELENIUM = True
-        print(f"{Colors.GREEN}[+] Che do Selenium da san sang!{Colors.END}")
-    except Exception as e:
-        USE_SELENIUM = False
-        print(f"{Colors.RED}[!] Loi khi import selenium: {str(e)[:50]}{Colors.END}")
-        print(f"{Colors.YELLOW}[!] Chuyen sang che do Requests{Colors.END}")
-else:
-    USE_SELENIUM = False
-    print(f"{Colors.RED}[!] Chuyen sang che do Requests (khong can Selenium){Colors.END}")
+# ========== TAT SELENIUM - CHUYEN SANG REQUESTS ==========
+USE_SELENIUM = False  # Tat Selenium vi bi loi
+print(f"{Colors.YELLOW}[!] TAT SELENIUM - CHUYEN SANG CHE DO REQUESTS{Colors.END}")
+print(f"{Colors.YELLOW}[!] CHE DO NAY NHANH HON NHUNG VIEW CO THE KHONG TANG{Colors.END}")
 
 # ========== DANH SACH PROXY ==========
 PROXY_LIST = []
@@ -71,6 +34,7 @@ def fetch_proxies():
     global PROXY_LIST
     try:
         print(f"{Colors.YELLOW}[*] Dang lay proxy...{Colors.END}")
+        # Proxy tu web
         urls = [
             "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=all",
             "https://www.proxy-list.download/api/v1/get?type=http"
@@ -114,16 +78,17 @@ class TikTokViewBot:
         self.success_count = 0
         self.fail_count = 0
         self.running = True
-        self.batch_size = 50
+        self.batch_size = 10
         self.proxies = PROXY_LIST.copy()
-        self.max_threads = 20
+        self.max_threads = 10
         self.lock = threading.Lock()
         self.use_selenium = USE_SELENIUM
 
     def get_video_id(self):
         if "tiktok.com" in self.video_url:
             if "/video/" in self.video_url:
-                return self.video_url.split("/video/")[1].split("?")[0].split("/")[0]
+                video_id = self.video_url.split("/video/")[1].split("?")[0].split("/")[0]
+                return video_id
             elif "vm.tiktok.com" in self.video_url:
                 try:
                     response = requests.head(self.video_url, allow_redirects=True, timeout=5)
@@ -133,6 +98,7 @@ class TikTokViewBot:
         return None
 
     def send_view_requests(self, proxy=None):
+        """Gui view bang Requests - PHUONG PHAP CHINH"""
         try:
             video_id = self.get_video_id()
             if not video_id:
@@ -140,36 +106,68 @@ class TikTokViewBot:
                     self.fail_count += 1
                 return False
 
-            username = self.video_url.split('/@')[1].split('/')[0]
-            url = f"https://www.tiktok.com/@{username}/video/{video_id}"
+            # Lay username
+            try:
+                username = self.video_url.split('/@')[1].split('/')[0]
+            except:
+                username = "tiktok"
+            
+            # Cac URL can request
+            urls = [
+                f"https://www.tiktok.com/@{username}/video/{video_id}",
+                f"https://www.tiktok.com/api/v1/video/views/?video_id={video_id}",
+                f"https://www.tiktok.com/api/v2/video/views/?video_id={video_id}"
+            ]
             
             headers = {
                 "User-Agent": self.ua.random,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
                 "Accept-Encoding": "gzip, deflate, br",
                 "Referer": "https://www.tiktok.com/",
                 "Origin": "https://www.tiktok.com",
                 "Connection": "keep-alive",
                 "Upgrade-Insecure-Requests": "1",
-                "Cache-Control": "max-age=0",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?1",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+                "DNT": "1"
             }
 
             session = requests.Session()
             session.trust_env = False
             
+            # Cookie day du
             session.cookies.update({
                 "tt_webid_v2": str(random.randint(1000000000000000000, 9999999999999999999)),
                 "tt_csrf_token": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
                 "s_v_web_id": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
+                "sessionid": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
+                "sessionid_ss": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
+                "uid": f"0{random.randint(10000000, 99999999)}",
+                "uuid": str(random.randint(1000000000000, 9999999999999)),
+                "passport_csrf_token": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
+                "passport_csrf_token_default": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32))
             })
             
             if proxy:
                 session.proxies = {"http": proxy, "https": proxy}
             
-            response = session.get(url, headers=headers, timeout=10, allow_redirects=True)
+            # Gui request den nhieu URL
+            success = False
+            for url in urls:
+                try:
+                    response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+                    if response.status_code in [200, 201, 202, 204]:
+                        success = True
+                        break
+                except:
+                    continue
             
-            if response.status_code == 200:
+            if success:
                 with self.lock:
                     self.success_count += 1
                     print(f"{Colors.GREEN}[+] View OK ({self.success_count}/{self.view_count}) - {time.strftime('%H:%M:%S')}{Colors.END}")
@@ -177,7 +175,7 @@ class TikTokViewBot:
             else:
                 with self.lock:
                     self.fail_count += 1
-                    print(f"{Colors.RED}[-] Fail {response.status_code} ({self.fail_count} fail){Colors.END}")
+                    print(f"{Colors.RED}[-] Fail ({self.fail_count} fail){Colors.END}")
                 return False
 
         except Exception as e:
@@ -186,62 +184,12 @@ class TikTokViewBot:
                 print(f"{Colors.RED}[!] Loi: {str(e)[:30]} ({self.fail_count} fail){Colors.END}")
             return False
 
-    def send_view_selenium(self, proxy=None):
-        if not self.use_selenium:
-            return self.send_view_requests(proxy)
-            
-        driver = None
-        try:
-            video_id = self.get_video_id()
-            if not video_id:
-                with self.lock:
-                    self.fail_count += 1
-                return False
-
-            chrome_options = Options()
-            chrome_options.add_argument("--headless")
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--disable-extensions")
-            chrome_options.add_argument("--disable-images")
-            chrome_options.add_argument(f"--user-agent={self.ua.random}")
-            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-            
-            if proxy:
-                chrome_options.add_argument(f'--proxy-server={proxy}')
-            
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(10)
-            
-            driver.get(self.video_url)
-            time.sleep(random.uniform(1, 3))
-            
-            driver.quit()
-            
-            with self.lock:
-                self.success_count += 1
-                print(f"{Colors.GREEN}[+] View OK ({self.success_count}/{self.view_count}) - {time.strftime('%H:%M:%S')}{Colors.END}")
-            return True
-
-        except Exception as e:
-            with self.lock:
-                self.fail_count += 1
-                print(f"{Colors.RED}[!] Selenium Error: {str(e)[:30]} ({self.fail_count} fail){Colors.END}")
-            if driver:
-                try:
-                    driver.quit()
-                except:
-                    pass
-            return False
-
     def send_view(self, proxy=None):
-        if self.use_selenium:
-            return self.send_view_selenium(proxy)
-        else:
-            return self.send_view_requests(proxy)
+        """Gui view"""
+        return self.send_view_requests(proxy)
 
     def run_batch(self, batch_count):
+        """Chay batch song song"""
         proxies = self.proxies.copy() if self.proxies else [None]
         
         with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
@@ -253,7 +201,7 @@ class TikTokViewBot:
             
             for future in as_completed(futures):
                 try:
-                    future.result(timeout=10)
+                    future.result(timeout=15)
                 except:
                     pass
 
@@ -270,12 +218,12 @@ class TikTokViewBot:
         print(f"{Colors.BOLD}{Colors.CYAN}")
         print("╔════════════════════════════════════════════════════════════════╗")
         print("║                     [ NGLONG DEV ]                            ║")
-        print(f"║         TIKTOK VIEW BOT v5.0 - {'SELENIUM' if self.use_selenium else 'REQUESTS'} MODE       ║")
+        print("║         TIKTOK VIEW BOT v5.1 - REQUESTS MODE                 ║")
         print("╠════════════════════════════════════════════════════════════════╣")
         print(f"║  {Colors.WHITE}TOI THIEU: 10 VIEWS{Colors.CYAN}           {Colors.WHITE}TOI DA: 100.000.000 VIEWS{Colors.CYAN}          ║")
         print(f"║  {Colors.WHITE}THREADS: {self.max_threads}{Colors.CYAN}                                         ║")
         print(f"║  {Colors.WHITE}PROXY: {len(self.proxies)}{Colors.CYAN}                                            ║")
-        print(f"║  {Colors.WHITE}MODE: {'SELENIUM' if self.use_selenium else 'REQUESTS'}{Colors.CYAN}                                         ║")
+        print(f"║  {Colors.WHITE}MODE: REQUESTS (MAX SPEED){Colors.CYAN}                                ║")
         print("╚════════════════════════════════════════════════════════════════╝")
         print(f"{Colors.END}")
 
@@ -310,7 +258,7 @@ class TikTokViewBot:
             print(f"{Colors.CYAN}[*] Tong: {self.success_count}/{self.view_count}{Colors.END}")
 
             if self.success_count < self.view_count and batch < total_batches - 1:
-                wait_time = random.randint(5, 15)
+                wait_time = random.randint(3, 8)
                 self.wait_with_countdown(wait_time)
 
         print("\n" + "=" * 60)
@@ -320,6 +268,12 @@ class TikTokViewBot:
             rate = (self.success_count/(self.success_count+self.fail_count)*100)
             print(f"{Colors.WHITE}[*] Ty le: {rate:.1f}%{Colors.END}")
         print(f"{Colors.WHITE}[*] END: {time.strftime('%H:%M:%S %d/%m/%Y')}{Colors.END}")
+        
+        # Thong bao them
+        print(f"{Colors.YELLOW}[!] LUU Y QUAN TRONG:{Colors.END}")
+        print(f"{Colors.YELLOW}[!] - View co the khong tang ngay lap tuc{Colors.END}")
+        print(f"{Colors.YELLOW}[!] - TikTok co che loc view bat thuong{Colors.END}")
+        print(f"{Colors.YELLOW}[!] - View ao chi co tac dung 24-48h{Colors.END}")
         print("=" * 60)
 
 # ========== MENU ==========
@@ -329,7 +283,7 @@ def show_menu():
     print(f"{Colors.BOLD}{Colors.CYAN}")
     print("╔════════════════════════════════════════════════════════════════╗")
     print("║                     [ NGLONG DEV ]                            ║")
-    print("║         TIKTOK VIEW BOT v5.0 - MAX SPEED                     ║")
+    print("║         TIKTOK VIEW BOT v5.1 - REQUESTS MODE                 ║")
     print("╠════════════════════════════════════════════════════════════════╣")
     print(f"║  {Colors.WHITE}1. TANG VIEW TIKTOK{Colors.CYAN}                                        ║")
     print(f"║  {Colors.WHITE}2. CAP NHAT PROXY{Colors.CYAN}                                          ║")
@@ -337,7 +291,8 @@ def show_menu():
     print(f"║  {Colors.WHITE}4. THOAT{Colors.CYAN}                                                   ║")
     print("╚════════════════════════════════════════════════════════════════╝")
     print(f"{Colors.END}")
-    print(f"{Colors.YELLOW}[*] MODE: {'SELENIUM' if USE_SELENIUM else 'REQUESTS'}{Colors.END}")
+    print(f"{Colors.YELLOW}[!] MODE: REQUESTS (KHONG CAN SELENIUM){Colors.END}")
+    print(f"{Colors.YELLOW}[!] TOC DO: MAX SPEED{Colors.END}")
 
 def get_video_info():
     video_url = input(f"{Colors.WHITE}[NGLONG] URL video: {Colors.END}").strip()
@@ -356,13 +311,9 @@ def get_video_info():
 
 # ========== MAIN ==========
 if __name__ == "__main__":
-    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT v5.0...{Colors.END}")
-    
-    if not USE_SELENIUM:
-        print(f"{Colors.YELLOW}[!] CHE DO REQUESTS (KHONG CAN SELENIUM){Colors.END}")
-        print(f"{Colors.YELLOW}[!] View co the khong tang ngay lap tuc{Colors.END}")
-    else:
-        print(f"{Colors.GREEN}[+] CHE DO SELENIUM (TRINH DUYET THUC){Colors.END}")
+    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT v5.1...{Colors.END}")
+    print(f"{Colors.YELLOW}[!] CHE DO REQUESTS - MAX SPEED{Colors.END}")
+    print(f"{Colors.YELLOW}[!] View co the khong tang ngay lap tuc{Colors.END}")
     
     time.sleep(2)
     
