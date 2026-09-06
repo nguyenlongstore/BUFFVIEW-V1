@@ -8,8 +8,31 @@ import json
 import subprocess
 from fake_useragent import UserAgent
 
-# ========== TU DONG CAI DAT SELENIUM ==========
+# ========== TU DONG CAI DAT SELENIUM VA CHROME ==========
+def check_and_install_chrome():
+    """Kiem tra va huong dan cai Chrome"""
+    try:
+        # Kiem tra Chrome da cai chua
+        chrome_paths = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Users\{}\AppData\Local\Google\Chrome\Application\chrome.exe".format(os.getlogin())
+        ]
+        
+        for path in chrome_paths:
+            if os.path.exists(path):
+                print(f"{Colors.GREEN}[+] Chrome da duoc cai dat!{Colors.END}")
+                return True
+        
+        print(f"{Colors.RED}[!] KHONG TIM THAY CHROME!{Colors.END}")
+        print(f"{Colors.YELLOW}[*] Vui long tai va cai Chrome tu: https://www.google.com/chrome/{Colors.END}")
+        print(f"{Colors.YELLOW}[*] Sau khi cai xong, chay lai bot{Colors.END}")
+        return False
+    except:
+        return False
+
 def install_selenium():
+    """Cai dat Selenium neu chua co"""
     try:
         import selenium
         print(f"{Colors.GREEN}[+] Selenium da duoc cai dat!{Colors.END}")
@@ -24,13 +47,38 @@ def install_selenium():
             print(f"{Colors.RED}[!] Khong the cai Selenium. Vui long tu cai: pip install selenium{Colors.END}")
             return False
 
-# Kiem tra va cai selenium
+def install_chromedriver():
+    """Huong dan cai Chromedriver"""
+    print(f"{Colors.YELLOW}[*] Kiem tra Chromedriver...{Colors.END}")
+    
+    # Kiem tra chromedriver trong PATH
+    try:
+        result = subprocess.run(["chromedriver", "--version"], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            print(f"{Colors.GREEN}[+] Chromedriver da duoc cai dat!{Colors.END}")
+            return True
+    except:
+        pass
+    
+    print(f"{Colors.RED}[!] KHONG TIM THAY CHROMEDRIVER!{Colors.END}")
+    print(f"{Colors.YELLOW}[*] Huong dan cai Chromedriver:{Colors.END}")
+    print(f"{Colors.YELLOW}  1. Mo Chrome, vao chrome://settings/help xem version{Colors.END}")
+    print(f"{Colors.YELLOW}  2. Tai Chromedriver: https://chromedriver.chromium.org/downloads{Colors.END}")
+    print(f"{Colors.YELLOW}  3. Giai nen va copy chromedriver.exe vao C:\\Windows\\System32{Colors.END}")
+    print(f"{Colors.YELLOW}  4. Hoac copy vao thu muc C:\\TikTokBot{Colors.END}")
+    return False
+
+# Kiem tra Chrome
+has_chrome = check_and_install_chrome()
+
+# Kiem tra va cai Selenium
 selenium_installed = install_selenium()
 
-if selenium_installed:
+if selenium_installed and has_chrome:
     try:
         from selenium import webdriver
         from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.chrome.service import Service
         from selenium.webdriver.common.by import By
         from selenium.webdriver.common.action_chains import ActionChains
         from selenium.webdriver.support.ui import WebDriverWait
@@ -39,6 +87,12 @@ if selenium_installed:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         import queue
         USE_SELENIUM = True
+        
+        # Kiem tra chromedriver
+        has_driver = install_chromedriver()
+        if not has_driver:
+            print(f"{Colors.YELLOW}[!] Chuyen sang che do Requests (khong can Chromedriver){Colors.END}")
+            USE_SELENIUM = False
     except:
         USE_SELENIUM = False
         print(f"{Colors.RED}[!] Loi khi import selenium. Chuyen sang che do Requests{Colors.END}")
@@ -63,12 +117,14 @@ class Colors:
 PROXY_LIST = []
 
 def fetch_proxies():
+    """Lay danh sach proxy tu web"""
     global PROXY_LIST
     try:
         print(f"{Colors.YELLOW}[*] Dang lay proxy...{Colors.END}")
         urls = [
             "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=all",
-            "https://www.proxy-list.download/api/v1/get?type=http"
+            "https://www.proxy-list.download/api/v1/get?type=http",
+            "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt"
         ]
         all_proxies = []
         for url in urls:
@@ -79,7 +135,9 @@ def fetch_proxies():
                     for p in proxies:
                         p = p.strip()
                         if p and ':' in p:
-                            all_proxies.append(f"http://{p}" if not p.startswith('http') else p)
+                            if not p.startswith('http'):
+                                p = f"http://{p}"
+                            all_proxies.append(p)
             except:
                 pass
         
@@ -91,7 +149,8 @@ def fetch_proxies():
             PROXY_LIST = [
                 "http://45.33.22.44:8080", "http://67.89.12.34:8080",
                 "http://98.76.54.32:8080", "http://23.54.32.11:8080",
-                "http://12.34.56.78:8080", "http://87.65.43.21:8080"
+                "http://12.34.56.78:8080", "http://87.65.43.21:8080",
+                "http://54.32.21.87:8080", "http://76.54.32.12:8080"
             ]
             print(f"{Colors.YELLOW}[!] Su dung {len(PROXY_LIST)} proxy backup{Colors.END}")
         return True
@@ -153,10 +212,12 @@ class TikTokViewBot:
             session = requests.Session()
             session.trust_env = False
             
+            # Cookie
             session.cookies.update({
                 "tt_webid_v2": str(random.randint(1000000000000000000, 9999999999999999999)),
                 "tt_csrf_token": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
                 "s_v_web_id": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
+                "sessionid": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
             })
             
             if proxy:
@@ -194,25 +255,37 @@ class TikTokViewBot:
                     self.fail_count += 1
                 return False
 
+            # Cau hinh Chrome
             chrome_options = Options()
-            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--headless")  # Chay ngam
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--disable-extensions")
             chrome_options.add_argument("--disable-images")
+            chrome_options.add_argument("--disable-javascript")  # Tat JS de nhanh
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
             chrome_options.add_argument(f"--user-agent={self.ua.random}")
             chrome_options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
             
+            # Proxy
             if proxy:
                 chrome_options.add_argument(f'--proxy-server={proxy}')
             
+            # Page load strategy
+            chrome_options.page_load_strategy = 'eager'
+            
+            # Tao driver
             driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(10)
             
+            # Mo trang
             driver.get(self.video_url)
-            time.sleep(random.uniform(1, 3))
+            time.sleep(random.uniform(0.5, 1.5))
             
+            # Dong trinh duyet
             driver.quit()
             
             with self.lock:
@@ -268,7 +341,7 @@ class TikTokViewBot:
         print(f"{Colors.BOLD}{Colors.CYAN}")
         print("╔════════════════════════════════════════════════════════════════╗")
         print("║                     [ NGLONG DEV ]                            ║")
-        print(f"║            TIKTOK VIEW BOT - {'SELENIUM' if self.use_selenium else 'REQUESTS'} MODE          ║")
+        print(f"║         TIKTOK VIEW BOT v5.0 - {'SELENIUM' if self.use_selenium else 'REQUESTS'} MODE       ║")
         print("╠════════════════════════════════════════════════════════════════╣")
         print(f"║  {Colors.WHITE}TOI THIEU: 10 VIEWS{Colors.CYAN}           {Colors.WHITE}TOI DA: 100.000.000 VIEWS{Colors.CYAN}          ║")
         print(f"║  {Colors.WHITE}THREADS: {self.max_threads}{Colors.CYAN}                                         ║")
@@ -327,17 +400,34 @@ def show_menu():
     print(f"{Colors.BOLD}{Colors.CYAN}")
     print("╔════════════════════════════════════════════════════════════════╗")
     print("║                     [ NGLONG DEV ]                            ║")
-    print("║            TIKTOK VIEW BOT - UNLIMITED                       ║")
+    print("║         TIKTOK VIEW BOT v5.0 - MAX SPEED                     ║")
     print("╠════════════════════════════════════════════════════════════════╣")
     print(f"║  {Colors.WHITE}1. TANG VIEW TIKTOK{Colors.CYAN}                                        ║")
     print(f"║  {Colors.WHITE}2. CAP NHAT PROXY{Colors.CYAN}                                          ║")
-    print(f"║  {Colors.WHITE}3. THOAT{Colors.CYAN}                                                   ║")
+    print(f"║  {Colors.WHITE}3. THONG TIN VIDEO{Colors.CYAN}                                        ║")
+    print(f"║  {Colors.WHITE}4. THOAT{Colors.CYAN}                                                   ║")
     print("╚════════════════════════════════════════════════════════════════╝")
     print(f"{Colors.END}")
+    print(f"{Colors.YELLOW}[*] MODE: {'SELENIUM' if USE_SELENIUM else 'REQUESTS'}{Colors.END}")
+
+def get_video_info():
+    video_url = input(f"{Colors.WHITE}[NGLONG] URL video: {Colors.END}").strip()
+    if not video_url:
+        print(f"{Colors.RED}[!] URL khong duoc de trong{Colors.END}")
+        return
+    
+    bot = TikTokViewBot(video_url, 10)
+    video_id = bot.get_video_id()
+    if video_id:
+        print(f"{Colors.GREEN}[+] VIDEO ID: {video_id}{Colors.END}")
+        print(f"{Colors.GREEN}[+] URL: {video_url}{Colors.END}")
+    else:
+        print(f"{Colors.RED}[-] URL khong hop le{Colors.END}")
+    input(f"{Colors.YELLOW}[*] Enter de tiep tuc...{Colors.END}")
 
 # ========== MAIN ==========
 if __name__ == "__main__":
-    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT...{Colors.END}")
+    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT v5.0...{Colors.END}")
     
     if not USE_SELENIUM:
         print(f"{Colors.YELLOW}[!] CHE DO REQUESTS (KHONG CAN SELENIUM){Colors.END}")
@@ -347,11 +437,12 @@ if __name__ == "__main__":
     
     time.sleep(2)
     
+    # Lay proxy
     fetch_proxies()
     
     while True:
         show_menu()
-        choice = input(f"{Colors.BOLD}{Colors.WHITE}[NGLONG] Nhap (1-3): {Colors.END}").strip()
+        choice = input(f"{Colors.BOLD}{Colors.WHITE}[NGLONG] Nhap (1-4): {Colors.END}").strip()
 
         if choice == "1":
             video_input = input(f"{Colors.WHITE}[NGLONG] URL video: {Colors.END}").strip()
@@ -379,7 +470,10 @@ if __name__ == "__main__":
             input(f"{Colors.YELLOW}[*] Enter...{Colors.END}")
 
         elif choice == "3":
-            print(f"{Colors.GREEN}[+] Tam biet!{Colors.END}")
+            get_video_info()
+
+        elif choice == "4":
+            print(f"{Colors.GREEN}[+] Tam biet! NGLONG DEV xin chao{Colors.END}")
             time.sleep(1)
             sys.exit(0)
 
