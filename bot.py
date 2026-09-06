@@ -8,98 +8,6 @@ import json
 import subprocess
 from fake_useragent import UserAgent
 
-# ========== TU DONG CAI DAT SELENIUM VA CHROME ==========
-def check_and_install_chrome():
-    """Kiem tra va huong dan cai Chrome"""
-    try:
-        # Kiem tra Chrome da cai chua
-        chrome_paths = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            r"C:\Users\{}\AppData\Local\Google\Chrome\Application\chrome.exe".format(os.getlogin())
-        ]
-        
-        for path in chrome_paths:
-            if os.path.exists(path):
-                print(f"{Colors.GREEN}[+] Chrome da duoc cai dat!{Colors.END}")
-                return True
-        
-        print(f"{Colors.RED}[!] KHONG TIM THAY CHROME!{Colors.END}")
-        print(f"{Colors.YELLOW}[*] Vui long tai va cai Chrome tu: https://www.google.com/chrome/{Colors.END}")
-        print(f"{Colors.YELLOW}[*] Sau khi cai xong, chay lai bot{Colors.END}")
-        return False
-    except:
-        return False
-
-def install_selenium():
-    """Cai dat Selenium neu chua co"""
-    try:
-        import selenium
-        print(f"{Colors.GREEN}[+] Selenium da duoc cai dat!{Colors.END}")
-        return True
-    except ImportError:
-        print(f"{Colors.YELLOW}[*] Dang cai dat Selenium...{Colors.END}")
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "selenium", "-q"])
-            print(f"{Colors.GREEN}[+] Da cai dat Selenium thanh cong!{Colors.END}")
-            return True
-        except:
-            print(f"{Colors.RED}[!] Khong the cai Selenium. Vui long tu cai: pip install selenium{Colors.END}")
-            return False
-
-def install_chromedriver():
-    """Huong dan cai Chromedriver"""
-    print(f"{Colors.YELLOW}[*] Kiem tra Chromedriver...{Colors.END}")
-    
-    # Kiem tra chromedriver trong PATH
-    try:
-        result = subprocess.run(["chromedriver", "--version"], capture_output=True, text=True, timeout=5)
-        if result.returncode == 0:
-            print(f"{Colors.GREEN}[+] Chromedriver da duoc cai dat!{Colors.END}")
-            return True
-    except:
-        pass
-    
-    print(f"{Colors.RED}[!] KHONG TIM THAY CHROMEDRIVER!{Colors.END}")
-    print(f"{Colors.YELLOW}[*] Huong dan cai Chromedriver:{Colors.END}")
-    print(f"{Colors.YELLOW}  1. Mo Chrome, vao chrome://settings/help xem version{Colors.END}")
-    print(f"{Colors.YELLOW}  2. Tai Chromedriver: https://chromedriver.chromium.org/downloads{Colors.END}")
-    print(f"{Colors.YELLOW}  3. Giai nen va copy chromedriver.exe vao C:\\Windows\\System32{Colors.END}")
-    print(f"{Colors.YELLOW}  4. Hoac copy vao thu muc C:\\TikTokBot{Colors.END}")
-    return False
-
-# Kiem tra Chrome
-has_chrome = check_and_install_chrome()
-
-# Kiem tra va cai Selenium
-selenium_installed = install_selenium()
-
-if selenium_installed and has_chrome:
-    try:
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options
-        from selenium.webdriver.chrome.service import Service
-        from selenium.webdriver.common.by import By
-        from selenium.webdriver.common.action_chains import ActionChains
-        from selenium.webdriver.support.ui import WebDriverWait
-        from selenium.webdriver.support import expected_conditions as EC
-        from selenium.common.exceptions import WebDriverException
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        import queue
-        USE_SELENIUM = True
-        
-        # Kiem tra chromedriver
-        has_driver = install_chromedriver()
-        if not has_driver:
-            print(f"{Colors.YELLOW}[!] Chuyen sang che do Requests (khong can Chromedriver){Colors.END}")
-            USE_SELENIUM = False
-    except:
-        USE_SELENIUM = False
-        print(f"{Colors.RED}[!] Loi khi import selenium. Chuyen sang che do Requests{Colors.END}")
-else:
-    USE_SELENIUM = False
-    print(f"{Colors.RED}[!] Chuyen sang che do Requests (khong can Selenium){Colors.END}")
-
 # ========== CAU HINH MAU SAC ==========
 class Colors:
     HEADER = '\033[95m'
@@ -113,18 +21,59 @@ class Colors:
     UNDERLINE = '\033[4m'
     END = '\033[0m'
 
+# ========== TU DONG CAI DAT SELENIUM ==========
+def install_selenium():
+    try:
+        import selenium
+        print(f"{Colors.GREEN}[+] Selenium da duoc cai dat!{Colors.END}")
+        return True
+    except ImportError:
+        print(f"{Colors.YELLOW}[*] Dang cai dat Selenium...{Colors.END}")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "selenium", "-q"])
+            print(f"{Colors.GREEN}[+] Da cai dat Selenium thanh cong!{Colors.END}")
+            return True
+        except Exception as e:
+            print(f"{Colors.RED}[!] Khong the cai Selenium: {str(e)[:50]}{Colors.END}")
+            print(f"{Colors.YELLOW}[*] Vui long tu cai: pip install selenium{Colors.END}")
+            return False
+
+# ========== KHAI BAO BIEN TOAN CUC ==========
+USE_SELENIUM = False
+
+# Kiem tra va cai selenium
+selenium_installed = install_selenium()
+
+if selenium_installed:
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.common.action_chains import ActionChains
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.common.exceptions import WebDriverException
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        USE_SELENIUM = True
+        print(f"{Colors.GREEN}[+] Che do Selenium da san sang!{Colors.END}")
+    except Exception as e:
+        USE_SELENIUM = False
+        print(f"{Colors.RED}[!] Loi khi import selenium: {str(e)[:50]}{Colors.END}")
+        print(f"{Colors.YELLOW}[!] Chuyen sang che do Requests{Colors.END}")
+else:
+    USE_SELENIUM = False
+    print(f"{Colors.RED}[!] Chuyen sang che do Requests (khong can Selenium){Colors.END}")
+
 # ========== DANH SACH PROXY ==========
 PROXY_LIST = []
 
 def fetch_proxies():
-    """Lay danh sach proxy tu web"""
     global PROXY_LIST
     try:
         print(f"{Colors.YELLOW}[*] Dang lay proxy...{Colors.END}")
         urls = [
             "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=all",
-            "https://www.proxy-list.download/api/v1/get?type=http",
-            "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt"
+            "https://www.proxy-list.download/api/v1/get?type=http"
         ]
         all_proxies = []
         for url in urls:
@@ -145,12 +94,10 @@ def fetch_proxies():
         if PROXY_LIST:
             print(f"{Colors.GREEN}[+] Da lay {len(PROXY_LIST)} proxy{Colors.END}")
         else:
-            # Proxy backup
             PROXY_LIST = [
                 "http://45.33.22.44:8080", "http://67.89.12.34:8080",
                 "http://98.76.54.32:8080", "http://23.54.32.11:8080",
-                "http://12.34.56.78:8080", "http://87.65.43.21:8080",
-                "http://54.32.21.87:8080", "http://76.54.32.12:8080"
+                "http://12.34.56.78:8080", "http://87.65.43.21:8080"
             ]
             print(f"{Colors.YELLOW}[!] Su dung {len(PROXY_LIST)} proxy backup{Colors.END}")
         return True
@@ -186,7 +133,6 @@ class TikTokViewBot:
         return None
 
     def send_view_requests(self, proxy=None):
-        """Gui view bang Requests (nhanh, khong can Selenium)"""
         try:
             video_id = self.get_video_id()
             if not video_id:
@@ -212,12 +158,10 @@ class TikTokViewBot:
             session = requests.Session()
             session.trust_env = False
             
-            # Cookie
             session.cookies.update({
                 "tt_webid_v2": str(random.randint(1000000000000000000, 9999999999999999999)),
                 "tt_csrf_token": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
                 "s_v_web_id": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
-                "sessionid": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
             })
             
             if proxy:
@@ -243,7 +187,6 @@ class TikTokViewBot:
             return False
 
     def send_view_selenium(self, proxy=None):
-        """Gui view bang Selenium (chat luong cao hon)"""
         if not self.use_selenium:
             return self.send_view_requests(proxy)
             
@@ -255,37 +198,25 @@ class TikTokViewBot:
                     self.fail_count += 1
                 return False
 
-            # Cau hinh Chrome
             chrome_options = Options()
-            chrome_options.add_argument("--headless")  # Chay ngam
+            chrome_options.add_argument("--headless")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--disable-extensions")
             chrome_options.add_argument("--disable-images")
-            chrome_options.add_argument("--disable-javascript")  # Tat JS de nhanh
-            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
-            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
             chrome_options.add_argument(f"--user-agent={self.ua.random}")
             chrome_options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-            chrome_options.add_experimental_option('useAutomationExtension', False)
             
-            # Proxy
             if proxy:
                 chrome_options.add_argument(f'--proxy-server={proxy}')
             
-            # Page load strategy
-            chrome_options.page_load_strategy = 'eager'
-            
-            # Tao driver
             driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(10)
             
-            # Mo trang
             driver.get(self.video_url)
-            time.sleep(random.uniform(0.5, 1.5))
+            time.sleep(random.uniform(1, 3))
             
-            # Dong trinh duyet
             driver.quit()
             
             with self.lock:
@@ -305,14 +236,12 @@ class TikTokViewBot:
             return False
 
     def send_view(self, proxy=None):
-        """Chon phuong thuc gui view"""
         if self.use_selenium:
             return self.send_view_selenium(proxy)
         else:
             return self.send_view_requests(proxy)
 
     def run_batch(self, batch_count):
-        """Chay batch song song"""
         proxies = self.proxies.copy() if self.proxies else [None]
         
         with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
@@ -437,7 +366,6 @@ if __name__ == "__main__":
     
     time.sleep(2)
     
-    # Lay proxy
     fetch_proxies()
     
     while True:
