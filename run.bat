@@ -1,11 +1,15 @@
 @echo off
-title NGLONG DEV - TIKTOK VIEW BOT
+title NGLONG DEV - TIKTOK VIEW BOT v5.0
 color 0F
-mode con: cols=85 lines=45
+mode con: cols=90 lines=50
 echo ==============================================
-echo     DANG KHOI DONG TIKTOK VIEW BOT v4.0
-echo     NGLONG DEV - AUTO IP RESOLVER
+echo     NGLONG DEV - TIKTOK VIEW BOT v5.0
+echo     MAX SPEED EDITION
 echo ==============================================
 echo.
+echo [*] Kiem tra va cai dat thu vien...
+pip install requests fake-useragent -q
+echo.
+echo [*] Khoi dong bot...
 python bot.py
 pause
