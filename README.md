@@ -47,7 +47,7 @@ Bước 3: Tạo các file
 
 File bot.py - [MỞ FILE BOT.PY](https://github.com/nguyenlongstore/BUFFVIEW-V1/blob/main/bot.py)
 
-File run.bat - Copy từ phần code bên dưới
+File run.bat - [MỞ FILE RUN.BAT](https://github.com/nguyenlongstore/BUFFVIEW-V1/blob/main/run.bat)
 
 Bước 4: Cài đặt Chrome (nếu dùng Selenium)
 
