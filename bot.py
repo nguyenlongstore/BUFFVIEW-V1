@@ -5,7 +5,6 @@ import time
 import os
 import sys
 import json
-import subprocess
 from fake_useragent import UserAgent
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -28,9 +27,6 @@ PROXY_LIST = []
 def fetch_vietnam_proxies():
     global PROXY_LIST
     try:
-        print(f"{Colors.YELLOW}[*] Dang lay proxy Viet Nam...{Colors.END}")
-        
-        # Proxy Viet Nam chat luong
         vietnam_proxies = [
             "http://113.161.77.184:8080",
             "http://113.161.77.185:8080",
@@ -62,18 +58,14 @@ def fetch_vietnam_proxies():
             "http://171.253.80.101:8080",
             "http://171.253.80.102:8080"
         ]
-        
         PROXY_LIST = vietnam_proxies
         print(f"{Colors.GREEN}[+] Da lay {len(PROXY_LIST)} proxy Viet Nam{Colors.END}")
         return True
     except:
-        PROXY_LIST = [
-            "http://113.161.77.184:8080", "http://113.161.77.185:8080",
-            "http://123.30.50.226:8080", "http://123.30.50.227:8080"
-        ]
+        PROXY_LIST = ["http://113.161.77.184:8080", "http://123.30.50.226:8080"]
         return True
 
-# ========== CLASS BOT - TOC DO CAO + TY LE CAO ==========
+# ========== CLASS BOT CHINH ==========
 class TikTokViewBot:
     def __init__(self, video_url, view_count):
         self.video_url = video_url
@@ -82,11 +74,11 @@ class TikTokViewBot:
         self.success_count = 0
         self.fail_count = 0
         self.running = True
-        self.batch_size = 200
+        self.batch_size = 50  # Giam xuong de tranh overload
         self.proxies = PROXY_LIST.copy()
-        self.max_threads = 100  # TANG LEN 100 THREAD
+        self.max_threads = 30  # Giam xuong 30 thread
         self.lock = threading.Lock()
-        self.use_selenium = False  # TAT SELENIUM
+        self.start_success = 0  # Luu so view thanh cong dau dot
 
     def get_video_id(self):
         if "tiktok.com" in self.video_url:
@@ -101,8 +93,8 @@ class TikTokViewBot:
                     return None
         return None
 
-    def send_view_super_fast(self, proxy=None):
-        """GUI VIEW SIEU TOC - 0.1s/view, TY LE CAO"""
+    def send_view(self, proxy=None):
+        """Gui view sieu toc"""
         try:
             video_id = self.get_video_id()
             if not video_id:
@@ -112,7 +104,7 @@ class TikTokViewBot:
 
             username = self.video_url.split('/@')[1].split('/')[0]
             
-            # PHUONG PHAP 1: REQUEST TRUC TIEP DEN TRANG VIDEO
+            # URL chinh
             url = f"https://www.tiktok.com/@{username}/video/{video_id}"
             
             headers = {
@@ -124,10 +116,6 @@ class TikTokViewBot:
                 "Origin": "https://www.tiktok.com",
                 "Connection": "keep-alive",
                 "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "same-origin",
-                "Sec-Fetch-User": "?1",
                 "Cache-Control": "no-cache",
                 "Pragma": "no-cache",
                 "DNT": "1"
@@ -136,7 +124,7 @@ class TikTokViewBot:
             session = requests.Session()
             session.trust_env = False
             
-            # Cookie - GIỐNG TRÌNH DUYỆT THẬT
+            # Cookie
             session.cookies.update({
                 "tt_webid_v2": str(random.randint(1000000000000000000, 9999999999999999999)),
                 "tt_csrf_token": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
@@ -144,36 +132,26 @@ class TikTokViewBot:
                 "sessionid": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
                 "sessionid_ss": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
                 "uid": f"0{random.randint(10000000, 99999999)}",
-                "uuid": str(random.randint(1000000000000, 9999999999999)),
-                "passport_csrf_token": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
-                "passport_csrf_token_default": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32)),
-                "tt_chain_token": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=64)),
-                "msToken": ''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=64))
+                "uuid": str(random.randint(1000000000000, 9999999999999))
             })
             
             if proxy:
                 session.proxies = {"http": proxy, "https": proxy}
             
-            # GUI REQUEST
             response = session.get(url, headers=headers, timeout=3, allow_redirects=True)
             
             if response.status_code in [200, 201, 202, 204, 301, 302]:
                 with self.lock:
                     self.success_count += 1
-                    # Hien thi nhanh
-                    sys.stdout.write(f"\r{Colors.GREEN}[+] View: {self.success_count}/{self.view_count} - {time.strftime('%H:%M:%S')}{Colors.END}")
-                    sys.stdout.flush()
                 return True
             else:
-                # THU PHUONG PHAP 2: API
+                # Thu API
                 try:
                     api_url = f"https://www.tiktok.com/api/v1/video/views/?video_id={video_id}"
                     response2 = session.get(api_url, headers=headers, timeout=2)
                     if response2.status_code == 200:
                         with self.lock:
                             self.success_count += 1
-                            sys.stdout.write(f"\r{Colors.GREEN}[+] View: {self.success_count}/{self.view_count} - {time.strftime('%H:%M:%S')}{Colors.END}")
-                            sys.stdout.flush()
                         return True
                 except:
                     pass
@@ -187,11 +165,8 @@ class TikTokViewBot:
                 self.fail_count += 1
             return False
 
-    def send_view(self, proxy=None):
-        return self.send_view_super_fast(proxy)
-
-    def run_batch_super_fast(self, batch_count):
-        """CHAY BATCH VOI 100 THREAD"""
+    def run_batch(self, batch_count):
+        """Chay batch voi thread pool"""
         proxies = self.proxies.copy() if self.proxies else [None]
         
         with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
@@ -201,11 +176,19 @@ class TikTokViewBot:
                 future = executor.submit(self.send_view, proxy)
                 futures.append(future)
             
+            # Dem ket qua
             for future in as_completed(futures):
                 try:
-                    future.result(timeout=2)
+                    future.result(timeout=3)
                 except:
                     pass
+
+    def wait_with_countdown(self, seconds):
+        for i in range(seconds, 0, -1):
+            sys.stdout.write(f"\r{Colors.CYAN}[*] Nghi {i}s   {Colors.END}")
+            sys.stdout.flush()
+            time.sleep(1)
+        print(f"\r{Colors.GREEN}[*] Tiep tuc...               {Colors.END}")
 
     def run(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -213,20 +196,20 @@ class TikTokViewBot:
         print(f"{Colors.BOLD}{Colors.CYAN}")
         print("╔════════════════════════════════════════════════════════════════╗")
         print("║                     [ NGLONG DEV ]                            ║")
-        print("║         TIKTOK VIEW BOT v8.0 - MAX SPEED 100%                ║")
+        print("║         TIKTOK VIEW BOT v8.1 - MAX SPEED                     ║")
         print("╠════════════════════════════════════════════════════════════════╣")
         print(f"║  {Colors.WHITE}TOI THIEU: 10 VIEWS{Colors.CYAN}           {Colors.WHITE}TOI DA: 100.000.000 VIEWS{Colors.CYAN}          ║")
         print(f"║  {Colors.WHITE}THREADS: {self.max_threads}{Colors.CYAN}                                        ║")
         print(f"║  {Colors.WHITE}PROXY VN: {len(self.proxies)}{Colors.CYAN}                                           ║")
-        print(f"║  {Colors.WHITE}TOC DO: ~500-1000 VIEW/PHUT{Colors.CYAN}                               ║")
+        print(f"║  {Colors.WHITE}TOC DO: ~300-500 VIEW/PHUT{Colors.CYAN}                               ║")
         print("╚════════════════════════════════════════════════════════════════╝")
         print(f"{Colors.END}")
 
-        print(f"{Colors.GREEN}[+] CHE DO MAX SPEED - 100 THREAD SONG SONG{Colors.END}")
+        print(f"{Colors.GREEN}[+] CHE DO MAX SPEED - 30 THREAD SONG SONG{Colors.END}")
         print(f"{Colors.GREEN}[+] PROXY VIET NAM - TANG VIEW CHUAN{Colors.END}")
         
         # Tinh thoi gian
-        est_time = self.view_count / 1000  # 1000 view/phut
+        est_time = self.view_count / 300  # 300 view/phut
         if est_time < 60:
             time_str = f"{est_time:.0f} giay"
         elif est_time < 3600:
@@ -240,6 +223,7 @@ class TikTokViewBot:
         video_id = self.get_video_id()
         if not video_id:
             print(f"{Colors.RED}[!] KHONG THE LAY VIDEO ID{Colors.END}")
+            print(f"{Colors.YELLOW}[!] Kiem tra URL: https://www.tiktok.com/@username/video/123456789{Colors.END}")
             return
 
         total_batches = (self.view_count + self.batch_size - 1) // self.batch_size
@@ -255,19 +239,24 @@ class TikTokViewBot:
             end_idx = min(start_idx + self.batch_size, self.view_count)
             batch_count = end_idx - start_idx
 
+            # Luu so view thanh cong truoc khi chay
+            before_success = self.success_count
+            
             print(f"\n{Colors.BOLD}{Colors.YELLOW}[=== DOT {batch+1}/{total_batches} - {batch_count} view ===]{Colors.END}")
             
             start_time = time.time()
-            self.run_batch_super_fast(batch_count)
+            self.run_batch(batch_count)
             elapsed = time.time() - start_time
             
-            # Hien thi ket qua
-            rate = (self.success_count - start_idx) / elapsed if elapsed > 0 else 0
-            print(f"\n{Colors.GREEN}[*] Dot {batch+1}: +{self.success_count - start_idx} view ({elapsed:.1f}s) - {rate:.1f} view/s{Colors.END}")
+            # Tinh so view thanh cong trong dot nay
+            added_views = self.success_count - before_success
+            rate = added_views / elapsed if elapsed > 0 else 0
+            
+            print(f"\n{Colors.GREEN}[*] Dot {batch+1}: +{added_views} view ({elapsed:.1f}s) - {rate:.1f} view/s{Colors.END}")
             print(f"{Colors.CYAN}[*] Tong: {self.success_count}/{self.view_count} ({self.success_count/self.view_count*100:.1f}%){Colors.END}")
 
             if self.success_count < self.view_count and batch < total_batches - 1:
-                wait_time = random.randint(1, 3)  # Nghi rat ngan
+                wait_time = random.randint(1, 3)
                 if wait_time > 0:
                     self.wait_with_countdown(wait_time)
 
@@ -280,16 +269,10 @@ class TikTokViewBot:
             rate = (self.success_count/(self.success_count+self.fail_count)*100)
             print(f"{Colors.WHITE}[*] Ty le thanh cong: {rate:.1f}%{Colors.END}")
         print(f"{Colors.WHITE}[*] Tong thoi gian: {elapsed_total:.1f}s ({elapsed_total/60:.1f} phut){Colors.END}")
-        print(f"{Colors.WHITE}[*] Toc do trung binh: {self.success_count/elapsed_total:.1f} view/s{Colors.END}")
+        if elapsed_total > 0:
+            print(f"{Colors.WHITE}[*] Toc do TB: {self.success_count/elapsed_total:.1f} view/s{Colors.END}")
         print(f"{Colors.WHITE}[*] END: {time.strftime('%H:%M:%S %d/%m/%Y')}{Colors.END}")
         print("=" * 60)
-
-    def wait_with_countdown(self, seconds):
-        for i in range(seconds, 0, -1):
-            sys.stdout.write(f"\r{Colors.CYAN}[*] Nghi {i}s   {Colors.END}")
-            sys.stdout.flush()
-            time.sleep(1)
-        print(f"\r{Colors.GREEN}[*] Tiep tuc...               {Colors.END}")
 
 # ========== MENU ==========
 def show_menu():
@@ -298,7 +281,7 @@ def show_menu():
     print(f"{Colors.BOLD}{Colors.CYAN}")
     print("╔════════════════════════════════════════════════════════════════╗")
     print("║                     [ NGLONG DEV ]                            ║")
-    print("║         TIKTOK VIEW BOT v8.0 - MAX SPEED 100%                ║")
+    print("║         TIKTOK VIEW BOT v8.1 - MAX SPEED                     ║")
     print("╠════════════════════════════════════════════════════════════════╣")
     print(f"║  {Colors.WHITE}1. TANG VIEW (MAX SPEED){Colors.CYAN}                                    ║")
     print(f"║  {Colors.WHITE}2. CAP NHAT PROXY VN{Colors.CYAN}                                       ║")
@@ -306,16 +289,13 @@ def show_menu():
     print(f"║  {Colors.WHITE}4. THOAT{Colors.CYAN}                                                   ║")
     print("╚════════════════════════════════════════════════════════════════╝")
     print(f"{Colors.END}")
-    print(f"{Colors.GREEN}[*] TOC DO: ~500-1000 VIEW/PHUT{Colors.END}")
+    print(f"{Colors.GREEN}[*] TOC DO: ~300-500 VIEW/PHUT{Colors.END}")
     print(f"{Colors.GREEN}[*] PROXY VIET NAM: {len(PROXY_LIST)}{Colors.END}")
-    print(f"{Colors.GREEN}[*] THREADS: 100 SONG SONG{Colors.END}")
+    print(f"{Colors.GREEN}[*] THREADS: 30 SONG SONG{Colors.END}")
 
 # ========== MAIN ==========
 if __name__ == "__main__":
-    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT v8.0...{Colors.END}")
-    print(f"{Colors.GREEN}[+] CHE DO MAX SPEED - 100 THREAD{Colors.END}")
-    print(f"{Colors.GREEN}[+] PROXY VIET NAM - TANG VIEW CHUAN{Colors.END}")
-    
+    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT v8.1...{Colors.END}")
     time.sleep(1)
     
     fetch_vietnam_proxies()
@@ -341,7 +321,7 @@ if __name__ == "__main__":
                 view_count = 10
 
             # Tinh thoi gian
-            est_time = view_count / 1000
+            est_time = view_count / 300
             if est_time < 60:
                 time_str = f"{est_time:.0f} giay"
             elif est_time < 3600:
@@ -350,7 +330,6 @@ if __name__ == "__main__":
                 time_str = f"{est_time/3600:.1f} gio"
             
             print(f"{Colors.YELLOW}[*] Du kien: {time_str}{Colors.END}")
-            print(f"{Colors.YELLOW}[*] Ty le thanh cong: 80-95%{Colors.END}")
             confirm = input(f"{Colors.YELLOW}[*] Tiep tuc? (y/n): {Colors.END}").strip().lower()
             if confirm != 'y':
                 continue
