@@ -45,7 +45,7 @@ cd C:\TikTokBot
 
 Bước 3: Tạo các file
 
-File bot.py - Copy từ phần code bên dưới
+File bot.py - [MỞ FILE BOT.PY](https://github.com/nguyenlongstore/BUFFVIEW-V1/blob/main/bot.py)
 
 File run.bat - Copy từ phần code bên dưới
 
