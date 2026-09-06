@@ -4,6 +4,7 @@ import threading
 import time
 import os
 import sys
+import json
 from fake_useragent import UserAgent
 
 # ========== CAU HINH MAU SAC ==========
@@ -23,12 +24,12 @@ class Colors:
 class TikTokViewBot:
     def __init__(self, video_url, view_count):
         self.video_url = video_url
-        self.view_count = max(10, min(100000000, view_count))  # TOI THIEU 10 VIEW
+        self.view_count = max(10, min(100000000, view_count))
         self.ua = UserAgent()
         self.success_count = 0
         self.fail_count = 0
         self.running = True
-        self.batch_size = 50  # Giam batch size cho test
+        self.batch_size = 50
 
     def get_video_id(self):
         if "tiktok.com" in self.video_url:
@@ -49,29 +50,34 @@ class TikTokViewBot:
                 self.fail_count += 1
                 return False
 
-            # Su dung URL thong thuong qua DNS
-            url = f"https://www.tiktok.com/api/v1/video/views/?video_id={video_id}"
+            # PHUONG PHAP 1: API chinh thuc (cach nay thuong khong tang view)
+            # url = f"https://www.tiktok.com/api/v1/video/views/?video_id={video_id}"
+            
+            # PHUONG PHAP 2: Gui request truc tiep den trang video (cach nay co the tang view)
+            url = f"https://www.tiktok.com/@{self.video_url.split('/@')[1].split('/')[0]}/video/{video_id}"
             
             headers = {
                 "User-Agent": self.ua.random,
-                "Accept": "application/json, text/plain, */*",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                 "Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
                 "Referer": "https://www.tiktok.com/",
                 "Origin": "https://www.tiktok.com",
                 "Connection": "keep-alive",
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "same-origin",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache"
+                "Sec-Fetch-User": "?1",
+                "Cache-Control": "max-age=0",
+                "Cookie": self.get_cookies()
             }
 
             session = requests.Session()
             session.trust_env = False
             
-            response = session.get(url, headers=headers, timeout=15)
+            # Gui request den trang video
+            response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
 
             if response.status_code == 200:
                 self.success_count += 1
@@ -95,6 +101,22 @@ class TikTokViewBot:
             print(f"{Colors.RED}[!] Error: {str(e)[:50]} ({self.fail_count} fail){Colors.END}")
             return False
 
+    def get_cookies(self):
+        """Tao cookie giong nhu trinh duyet that"""
+        cookies = {
+            "tt_webid_v2": f"{random.randint(1000000000000000000, 9999999999999999999)}",
+            "tt_csrf_token": f"{''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32))}",
+            "s_v_web_id": f"{''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32))}",
+            "tt_chain_token": f"{''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=64))}",
+            "passport_csrf_token": f"{''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32))}",
+            "passport_csrf_token_default": f"{''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32))}",
+            "sessionid": f"{''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32))}",
+            "sessionid_ss": f"{''.join(random.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=32))}",
+            "uid": f"0{random.randint(10000000, 99999999)}",
+            "uuid": f"{random.randint(1000000000000, 9999999999999)}",
+        }
+        return "; ".join([f"{k}={v}" for k, v in cookies.items()])
+
     def wait_with_countdown(self, seconds):
         print(f"{Colors.YELLOW}[*] Dang cho {seconds}s de tranh xung dot code...{Colors.END}")
         for i in range(seconds, 0, -1):
@@ -106,14 +128,13 @@ class TikTokViewBot:
     def run(self):
         os.system('cls' if os.name == 'nt' else 'clear')
         
-        # ====== BANNER ======
         print(f"{Colors.BOLD}{Colors.CYAN}")
         print("╔════════════════════════════════════════════════════════════════╗")
         print("║                     [ NGLONG DEV ]                            ║")
         print("║            TIKTOK VIEW BOT - UNLIMITED VIEWS                 ║")
         print("╠════════════════════════════════════════════════════════════════╣")
         print(f"║  {Colors.WHITE}TOI THIEU: 10 VIEWS{Colors.CYAN}           {Colors.WHITE}TOI DA: 100.000.000 VIEWS{Colors.CYAN}          ║")
-        print(f"║  {Colors.WHITE}CHE DO: REQUEST QUA DNS{Colors.CYAN}                                  ║")
+        print(f"║  {Colors.WHITE}CHE DO: TRUY CAP TRANG VIDEO{Colors.CYAN}                             ║")
         print("╚════════════════════════════════════════════════════════════════╝")
         print(f"{Colors.END}")
 
@@ -143,7 +164,7 @@ class TikTokViewBot:
             print(f"\n{Colors.BOLD}{Colors.YELLOW}[===== DOT {batch+1}/{total_batches} - {batch_view_count} view =====]{Colors.END}")
 
             threads = []
-            max_threads = 10  # Giam xuong cho test
+            max_threads = 10
 
             for i in range(batch_view_count):
                 if not self.running:
@@ -153,7 +174,7 @@ class TikTokViewBot:
                 threads.append(t)
                 t.start()
 
-                delay = random.uniform(0.5, 1.5)
+                delay = random.uniform(1.0, 2.5)  # Tang delay de giong nguoi that
                 time.sleep(delay)
 
                 if len(threads) >= max_threads:
@@ -168,10 +189,9 @@ class TikTokViewBot:
             print(f"{Colors.CYAN}[*] Tong thanh cong: {self.success_count}/{self.view_count}{Colors.END}")
 
             if self.success_count < self.view_count and batch < total_batches - 1:
-                wait_time = random.randint(10, 30)  # Giam delay cho test
+                wait_time = random.randint(15, 30)
                 self.wait_with_countdown(wait_time)
 
-        # ====== KET THUC ======
         print("\n" + "=" * 60)
         print(f"{Colors.BOLD}{Colors.GREEN}[+] HOAN THANH! Tong view da gui: {self.success_count}{Colors.END}")
         print(f"{Colors.RED}[-] That bai: {self.fail_count}{Colors.END}")
@@ -182,7 +202,7 @@ class TikTokViewBot:
         print("=" * 60)
         print(f"{Colors.BOLD}{Colors.CYAN}╔════════════════════════════════════════════════════════════════╗{Colors.END}")
         print(f"{Colors.BOLD}{Colors.CYAN}║                    CAM ON BAN DA SU DUNG!                    ║{Colors.END}")
-        print(f"{Colors.BOLD}{Colors.CYAN}║              NGLONG DEV - TIKTOK VIEW BOT v4.2               ║{Colors.END}")
+        print(f"{Colors.BOLD}{Colors.CYAN}║              NGLONG DEV - TIKTOK VIEW BOT v4.3               ║{Colors.END}")
         print(f"{Colors.BOLD}{Colors.CYAN}╚════════════════════════════════════════════════════════════════╝{Colors.END}")
 
 # ========== MENU CHUC NANG ==========
@@ -205,18 +225,8 @@ def get_video_info(video_url):
         bot = TikTokViewBot(video_url, 10)
         video_id = bot.get_video_id()
         if video_id:
-            url = f"https://www.tiktok.com/api/v1/video/info/?video_id={video_id}"
-            headers = {
-                "User-Agent": UserAgent().random,
-                "Accept": "application/json"
-            }
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                print(f"{Colors.GREEN}[+] VIDEO ID: {video_id}{Colors.END}")
-                print(f"{Colors.GREEN}[+] STATUS: {data.get('status_code', 'OK')}{Colors.END}")
-            else:
-                print(f"{Colors.RED}[-] Khong the lay thong tin video{Colors.END}")
+            print(f"{Colors.GREEN}[+] VIDEO ID: {video_id}{Colors.END}")
+            print(f"{Colors.GREEN}[+] URL VIDEO: {video_url}{Colors.END}")
         else:
             print(f"{Colors.RED}[-] URL khong hop le{Colors.END}")
     except Exception as e:
@@ -225,6 +235,11 @@ def get_video_info(video_url):
 
 # ========== MAIN ==========
 if __name__ == "__main__":
+    print(f"{Colors.YELLOW}[*] KHOI DONG TIKTOK VIEW BOT...{Colors.END}")
+    print(f"{Colors.YELLOW}[!] LUU Y: View ao chi co tac dung trong 24-48h{Colors.END}")
+    print(f"{Colors.YELLOW}[!] TikTok co he thong loc view bat thuong{Colors.END}")
+    time.sleep(2)
+    
     while True:
         show_menu()
         choice = input(f"{Colors.BOLD}{Colors.WHITE}[NGLONG] Nhap lua chon (1-3): {Colors.END}").strip()
